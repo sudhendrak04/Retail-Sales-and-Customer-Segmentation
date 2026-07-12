@@ -1,0 +1,28 @@
+# Virtual environment
+retail_env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Raw data file (too large for GitHub)
+*.xlsx
+*.xls
+
+# Environment variables / secrets (never push passwords)
+.env
+
+# VS Code settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SQLTools connection config (contains your DB password)
+*.session.sql
