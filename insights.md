@@ -15,3 +15,6 @@ The RFM scores are the input to KMeans clustering — instead of us manually dec
 	Customer ID	Recency	Frequency	Monetary	Segment
 0	12346.0	326	17	-64.68	Lost
 Customer 12346.0 has a negative Monetary value (-64.68). This means they had net returns exceeding purchases. Edge case — not worth fixing for this project, but worth noting if asked in an interview
+
+The relationship between features (recency, frequency, monetary) and churn is fairly linear — which is exactly what Logistic Regression is built for
+This is a key interview talking point: "I tested both models and let the data decide — simpler won"
