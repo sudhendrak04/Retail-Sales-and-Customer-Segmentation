@@ -1,97 +1,104 @@
 # Retail Sales & Customer Segmentation Analysis
 
-## Business Question
-An online UK-based retailer (B2B gift/home décor wholesaler) wants to understand:
-- How is revenue trending over time, and when are peak seasons?
-- Which products and customers drive the most revenue?
-- Can we segment customers into actionable groups to improve retention and marketing?
+> **A full-stack data analytics project on 1M+ real retail transactions — combining SQL, Python, machine learning, and business storytelling.**
+
+**Dataset:** [Online Retail II — UCI ML Repository](https://archive.ics.uci.edu/dataset/502/online+retail+ii) | 1,067,371 raw rows → 779,425 after cleaning (73% retained) | Dec 2009 – Dec 2011
 
 ---
 
-## Dataset
-**Source:** [Online Retail II — UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/502/online+retail+ii)  
-**Period:** December 2009 – December 2011  
-**Raw rows:** 1,067,371 | **After cleaning:** 779,425 (73% retained)
+## What This Project Found
 
 ---
 
-## Tech Stack
-| Tool | Purpose |
-|---|---|
-| Python (pandas, scikit-learn) | Data cleaning, RFM analysis, KMeans clustering |
-| PostgreSQL | Normalized relational database (4-table schema) |
-| SQLAlchemy + psycopg2 | Python ↔ PostgreSQL connection |
-| matplotlib / seaborn | Visualizations |
-| Excel (CSV export) | Stakeholder-facing summary dashboard |
+### 📈 1. Revenue is Seasonal — Peak in October, Crash in December
+
+Analysis of 25 months of transactions reveals a consistent pattern every year: **October and November consistently break £1M in revenue**, then December drops sharply. Customers place their holiday orders in October — not December.
+
+| Month | 2010 Revenue | 2011 Revenue |
+|---|---|---|
+| October | £1,033,112 | £1,035,642 |
+| November | £1,166,460 | £1,156,205 |
+| December | £570,422 | £517,208 |
+
+**Recommendation:** Begin inventory build-up in September. Launch early-access promotions in October to capture peak demand before competitors.
 
 ---
 
-## Project Structure
-```
-retail_project/
-│
-├── retail.ipynb               # Main analysis notebook
-├── retail_db.session.sql      # SQL queries (revenue trend, top products, LTV, MoM growth)
-├── customer_segments_summary.csv   # Segment-level summary (for Excel dashboard)
-├── rfm_customers_full.csv     # Per-customer RFM scores and segments
-├── insights.md                # Running notes during analysis
-└── README.md                  # This file
-```
+### 👥 2. Four Customer Segments Identified via RFM + KMeans Clustering
+
+Each customer was scored on **Recency** (days since last purchase), **Frequency** (number of orders), and **Monetary** (total spend). KMeans clustering grouped 5,938 customers into 4 distinct segments.
+
+![Customer Segments by Size](images/customer%20segment%20by%20size.png)
+
+![Recency vs Monetary Value by Segment](images/receny%20vs%20monetary%20values.png)
+
+| Segment | Customers | Avg Spend | Avg Recency | What They Are |
+|---|---|---|---|---|
+| 🟡 **VIP Wholesale** | 4 | £422,092 | 3.5 days | Mega buyers — your entire top-line depends on 4 clients |
+| 🟢 **Champions** | 42 | £67,850 | 20 days | Frequent, high-value, recent — your best regular customers |
+| 🔵 **Loyal** | 3,859 | £2,811 | 66 days | Core customer base — biggest group, moderate spend |
+| 🔴 **Lost** | 2,037 | £619 | 466 days | Haven't bought in 15+ months — not worth re-engaging |
+
+> **Key finding:** This is a **B2B wholesale company**, not a consumer retailer. Average order values of £422K confirm bulk buying — individual consumers don't spend that way.
+
+**Clusters chosen using the Elbow Method:**
+
+![Elbow Method](images/output.png)
 
 ---
 
-## Approach
+### 🏆 3. Top 10 Customers Drive a Disproportionate Share of Revenue
 
-### 1. Data Cleaning
-Removed rows with missing Customer IDs (~243K rows), cancelled orders (Invoice starting with "C"), zero/negative quantities and prices, and duplicates. Retained 73% of raw data.
+The top 5 customers alone account for over £1.9M in lifetime value. Customer 18102 spent £580,987 across 145 orders.
 
-### 2. PostgreSQL Schema (Normalized)
-Designed a 4-table normalized schema:
-- `customers` (customer_id, country)
-- `products` (stock_code, description)
-- `invoices` (invoice, invoice_date, customer_id)
-- `order_items` (order_item_id, invoice, stock_code, quantity, price)
+| Rank | Customer ID | Country | Lifetime Value | Orders |
+|---|---|---|---|---|
+| 1 | 18102 | United Kingdom | £580,987 | 145 |
+| 2 | 14646 | Netherlands | £528,602 | 151 |
+| 3 | 14156 | Ireland | £313,437 | 156 |
+| 4 | 14911 | Ireland | £291,420 | 398 |
+| 5 | 17450 | United Kingdom | £244,784 | 51 |
 
-Price is stored in `order_items` (not `products`) to preserve historical transaction pricing.
-
-### 3. SQL Analysis
-Wrote 4 queries to answer core business questions:
-- Monthly revenue trend (seasonal pattern identified)
-- Top 10 products by revenue
-- Top 10 customers by lifetime value
-- Month-over-month revenue growth %
-
-### 4. RFM + KMeans Customer Segmentation
-Computed Recency, Frequency, and Monetary metrics per customer. Scaled with StandardScaler, used the elbow method to select K=4 clusters, and ran KMeans to produce 4 segments.
+**Recommendation:** Assign dedicated account managers to all VIP Wholesale and Champion customers. The cost of losing one client far exceeds the cost of a full retention programme.
 
 ---
 
-## Key Insights & Recommendations
+### 🤖 4. Churn Prediction Model — AUC-ROC: 0.84
 
-### 📌 Insight 1: Revenue is Strongly Seasonal — Plan Inventory for October
-October and November consistently exceed £1M in monthly revenue across both years (Oct 2010: £1.03M, Nov 2010: £1.16M; Oct 2011: £1.03M, Nov 2011: £1.15M). December drops sharply, indicating customers place holiday orders in Oct/Nov.
+A **Logistic Regression** classifier trained on a time-split approach (training: Dec 2009–Jun 2011, performance window: Jul–Dec 2011) predicts which Loyal customers will stop buying before they actually do.
 
-**Recommendation:** Begin inventory build-up and marketing campaigns by September. Launch early-access promotions in October to capture peak demand before competitors.
+- **75% accuracy** on held-out test data
+- **77% recall** on churners — catches 386 of 501 actual churners
+- Logistic Regression outperformed Random Forest (0.84 vs 0.81 AUC) — simpler model won because the relationship between features and churn is largely linear
+
+![ROC Curve](images/ROC%20curve.png)
+
+![Confusion Matrix](images/confusion%20matrix.png)
+
+#### What Predicts Churn Most?
+
+![Feature Importance — Random Forest](images/feature%20importance%20using%20RF.png)
+
+**Recency is the #1 churn signal** — more important than how often or how much a customer spends. If they haven't bought recently, the clock is ticking.
+
+#### Churn Risk Breakdown — 1,998 Loyal Customers Scored
+
+![Churn Risk Bar Chart](images/bar%20graph.png)
+
+| Risk Level | Customers | Recommended Action |
+|---|---|---|
+| 🔴 High Risk | 1,053 | Likely already gone — low ROI to pursue |
+| 🟡 Medium Risk | **883** | **Primary target — still saveable** |
+| 🟢 Low Risk | 62 | Healthy — maintain relationship |
+
+**Recommendation:** Focus re-engagement budget exclusively on the 883 Medium Risk customers. A personalised "we miss you" email at the 60-day inactivity mark costs almost nothing — but losing a £2,800 average-spend customer does.
 
 ---
 
-### 📌 Insight 2: 33% of Customers Are Lost — But They're Not All Equal
-2,037 customers (33%) haven't purchased in over a year with an average spend of only £619. However, the Loyal segment (3,859 customers) shows moderate spend (avg £2,811) and recent activity — they are at risk of becoming Lost if not engaged.
+## 3 Actions a Business Can Take Today
 
-**Recommendation:** Do not invest in win-back campaigns for the Lost segment — their low lifetime value makes the ROI poor. Instead, invest in retaining Loyal customers before they churn: targeted re-engagement emails at the 60-day inactivity mark.
-
----
-
-### 📌 Insight 3: 46 Customers Generate Disproportionate Revenue — Protect Them
-Champions (42 customers, avg £67K spend) and VIP Wholesale (4 customers, avg £422K spend) together represent under 1% of the customer base but are responsible for a significant share of total revenue.
-
-**Recommendation:** Assign a dedicated account manager to all VIP Wholesale and Champion customers. Offer them early product access, volume discounts, and direct contact channels. The cost of losing even one VIP Wholesale client far exceeds the cost of a retention program.
-
----
-
-## Files to Reproduce This Analysis
-1. Download `online_retail_II.xlsx` from UCI ML Repository
-2. Create a virtual environment: `python -m venv retail_env`
-3. Install dependencies: `pip install -r requirements.txt`
-4. Run `retail.ipynb` top to bottom
-5. Set up PostgreSQL, create `retail_db`, and run schema SQL before loading data
+| # | Action | Segment | Expected Impact |
+|---|---|---|---|
+| 1 | Protect top 46 customers with dedicated account management | Champions + VIP | Retain £500K+ annual revenue |
+| 2 | Re-engagement campaign on 883 Medium Risk Loyal customers | Loyal (Medium Risk) | Recover customers before they go Lost |
+| 3 | Front-load marketing spend to September–October every year | All segments | Capture £1M+ seasonal peak before competitors |
